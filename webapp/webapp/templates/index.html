@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Motion Feedback</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px }
+      #events { white-space: pre-wrap; background: #f6f6f6; padding: 10px; border-radius: 6px }
+    </style>
+  </head>
+  <body>
+    <h1>Upload a video for motion feedback</h1>
+    <input id="fileInput" type="file" accept="video/*" />
+    <button id="uploadBtn">Upload & Process</button>
+
+    <h2>Live feedback</h2>
+    <div id="events"></div>
+
+    <script>
+      const uploadBtn = document.getElementById('uploadBtn');
+      const fileInput = document.getElementById('fileInput');
+      const events = document.getElementById('events');
+
+      uploadBtn.addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        if (!file) return alert('Select a file first');
+
+        events.textContent = '';
+
+        const form = new FormData();
+        form.append('file', file);
+
+        const resp = await fetch('/inference/upload/', { method: 'POST', body: form });
+        if (!resp.ok) { events.textContent = 'Upload failed'; return }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let parts = buf.split('\n\n');
+          buf = parts.pop();
+          for (const p of parts) {
+            if (p.startsWith('data: ')) {
+              const json = p.substring(6).trim();
+              try {
+                const obj = JSON.parse(json);
+                events.textContent += JSON.stringify(obj) + '\n';
+              } catch (e) {
+                events.textContent += json + '\n';
+              }
+            }
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+django>=3.2
+opencv-python
+mediapipe
+torch
+numpy
