@@ -1,4 +1,4 @@
-import ColorBends from '../components/ColorBendsExact';
+import Prism from '../components/Prism';
 import './Team.css';
 
 export default function Team() {
@@ -31,19 +31,20 @@ export default function Team() {
 
   return (
     <div className="team-page">
-      <ColorBends
-  colors={["#ff0080", "#ff8c00", "#ffff00", "#00ff00", "#00ffff", "#0080ff", "#8000ff"]}
-  rotation={20}
-  speed={0.14}
-  scale={1.2}
-  frequency={1.8}
-  warpStrength={1.8}
-  mouseInfluence={0.6}
-  parallax={0.6}
-  noise={0.03}
-        transparent={false}
-        className="team-background"
-      />
+      <div className="team-background">
+        <Prism
+          animationType="rotate"
+          timeScale={0.2}
+          height={4.0}
+          baseWidth={5.0}
+          scale={2.2}
+          hueShift={0}
+          colorFrequency={0.5}
+          noise={0.05}
+          glow={0.5}
+          bloom={1.2}
+        />
+      </div>
       <div className="team-content">
         <h1 className="team-title">Meet the Team</h1>
         <p className="team-subtitle">
