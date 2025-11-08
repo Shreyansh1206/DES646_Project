@@ -1,0 +1,270 @@
+/* Bubble Menu Container */
+.bubble-menu {
+  z-index: 9999;
+}
+
+.bubble-menu.fixed {
+  position: fixed;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.bubble-menu.absolute {
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Menu Toggle Button */
+.bubble-menu-toggle {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.25rem;
+  
+  /* Frosted Glass Effect */
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.bubble-menu-toggle:hover {
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.bubble-menu-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Logo Container */
+.logo-container {
+  color: var(--menu-color, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hamburger Lines */
+.hamburger {
+  position: absolute;
+  bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5px;
+}
+
+.line {
+  width: 18px;
+  height: 2px;
+  background: var(--menu-color, #ffffff);
+  border-radius: 2px;
+  transition: all var(--animation-duration, 0.5s) var(--animation-ease);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.line-1.open {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.line-2.open {
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+.line-3.open {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Bubble Menu Content */
+.bubble-menu-content {
+  position: absolute;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--animation-duration, 0.5s) ease;
+}
+
+.bubble-menu-content.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Bubble Items Container - Horizontal Layout */
+.bubble-items {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Bubble Item Wrapper with Animation */
+.bubble-item-wrapper {
+  opacity: 0;
+  transform: translateY(50px) scale(0.8);
+  animation: none;
+}
+
+.bubble-menu.open .bubble-item-wrapper {
+  animation: bubbleSlideInHorizontal var(--animation-duration, 0.5s) var(--animation-ease) forwards;
+  animation-delay: var(--item-delay, 0s);
+}
+
+@keyframes bubbleSlideInHorizontal {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(var(--item-rotation, 0deg));
+  }
+}
+
+/* Individual Bubble Item */
+.bubble-item {
+  position: relative;
+  display: inline-block;
+  padding: 1rem 2rem;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--menu-color, #ffffff);
+  white-space: nowrap;
+  
+  /* Frosted Glass Effect */
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  cursor: pointer;
+}
+
+.bubble-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.bubble-item:hover::before {
+  opacity: 1;
+}
+
+.bubble-item:hover {
+  background: var(--hover-bg, #3b82f6);
+  color: var(--hover-color, #ffffff);
+  transform: translateY(-4px) scale(1.05);
+  border-color: var(--hover-bg, #3b82f6);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.35),
+    0 0 20px var(--hover-bg, rgba(59, 130, 246, 0.3)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.bubble-item:active {
+  transform: translateY(-2px) scale(1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .bubble-menu.fixed,
+  .bubble-menu.absolute {
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .bubble-menu-toggle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .logo-container svg {
+    width: 35px;
+    height: 35px;
+  }
+
+  .bubble-items {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .bubble-item {
+    padding: 0.875rem 1.75rem;
+    font-size: 0.95rem;
+  }
+
+  .hamburger {
+    bottom: 5px;
+  }
+
+  .line {
+    width: 16px;
+  }
+}
+
+/* Add subtle shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.bubble-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.bubble-item:hover::after {
+  opacity: 1;
+  animation: shimmer 2s infinite;
+}
