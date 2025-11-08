@@ -67,43 +67,49 @@ export default function Home() {
           <p className="hero-tagline">By Gemineers</p>
         </div>
 
-        <div className="scroll-section">
-          <div className="section-container">
-            <h2 className="section-title">Real-Time Analysis</h2>
-            <p className="section-description">
-              Upload your workout video and get instant feedback on your form. 
-              Our AI analyzes your movements frame by frame to ensure perfect technique.
-            </p>
+        <div className="info-section">
+          <div className="section-header">
+            <h2>How It Works</h2>
+            <p>Three simple steps to perfect your form</p>
           </div>
-        </div>
 
-        <div className="scroll-section">
-          <div className="section-container">
-            <h2 className="section-title">Track Every Rep</h2>
-            <p className="section-description">
-              Automatic rep counting and form validation for squats, deadlifts, and pull-ups. 
-              Know exactly when your form breaks down during your set.
-            </p>
+          <div className="info-cards">
+            <div className="info-card">
+              <div className="info-number">01</div>
+              <div className="info-icon">📤</div>
+              <h3>Upload Your Video</h3>
+              <p>
+                Record your workout and upload it to our platform. We support
+                squats, deadlifts, and pull-ups.
+              </p>
+            </div>
+
+            <div className="info-card">
+              <div className="info-number">02</div>
+              <div className="info-icon">🧠</div>
+              <h3>AI Analysis</h3>
+              <p>
+                Our advanced AI analyzes your form in real-time, tracking key
+                angles and movement patterns.
+              </p>
+            </div>
+
+            <div className="info-card">
+              <div className="info-number">03</div>
+              <div className="info-icon">📈</div>
+              <h3>Get Feedback</h3>
+              <p>
+                Receive detailed feedback on your form, rep count, and areas for
+                improvement.
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="scroll-section">
-          <div className="section-container">
-            <h2 className="section-title">Prevent Injuries</h2>
-            <p className="section-description">
-              Get precise angle measurements and alignment feedback. 
-              Catch form issues before they become injuries.
-            </p>
-          </div>
-        </div>
-
-        <div className="scroll-section">
-          <div className="section-container">
-            <h2 className="section-title">Start Analyzing</h2>
-            <p className="section-description">
-              Upload your video and experience the future of form analysis.
-            </p>
-            <Link to="/upload" className="cta-button">Get Started</Link>
+          <div className="cta-section">
+            <Link to="/upload" className="btn btn-large-primary">
+              Start Analyzing Your Form
+              <span className="btn-arrow">→</span>
+            </Link>
           </div>
         </div>
 

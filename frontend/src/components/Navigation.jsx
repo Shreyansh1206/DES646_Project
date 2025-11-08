@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import KinetiFormLogo from './KinetiFormLogo';
 import './Navigation.css';
 
 export default function Navigation() {
@@ -12,8 +13,8 @@ export default function Navigation() {
     <nav className="navigation">
       <div className="nav-container">
         <Link to="/" className="nav-logo">
-          <span className="logo-icon">🎯</span>
-          <span className="logo-text">Motion Analysis</span>
+          <KinetiFormLogo size={40} color="#ffffff" />
+          <span className="logo-text">KinetiForm</span>
         </Link>
         <div className="nav-links">
           <Link to="/" className={`nav-link ${isActive('/')}`}>
