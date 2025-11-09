@@ -453,7 +453,7 @@ function VideoUpload() {
 
       {latestFeedback && (
         <div className="live-feedback">
-          <h2>📊 Live Feedback</h2>
+          <h2>📊 Feedback</h2>
           <div className="metrics">
             <div className="metric-card highlight">
               <div className="metric-value">{latestFeedback.count}</div>
@@ -514,7 +514,7 @@ function VideoUpload() {
               <span className="result-value" style={{
                 color: finalResult.score >= 75 ? '#4ade80' : finalResult.score >= 50 ? '#fbbf24' : '#f87171'
               }}>
-                {finalResult.score ? `${finalResult.score}/100` : 'N/A'}
+                {typeof finalResult.score === 'number' ? `${finalResult.score}/100` : 'N/A'}
               </span>
             </div>
             <div className="result-item">
