@@ -1,13 +1,21 @@
 import os
 import tempfile
-from django.http import StreamingHttpResponse, HttpResponseBadRequest
+from django.http import StreamingHttpResponse, HttpResponseBadRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from .services import stream_feedback_for_video
 
 
+def health(request):
+    """Lightweight health endpoint used by the frontend to verify backend reachability."""
+    return JsonResponse({'status': 'ok'}, status=200)
+
+
 @csrf_exempt
 def upload_video(request):
+    # Allow a HEAD probe from the frontend's connectivity check to return 200
+    if request.method == 'HEAD':
+        return HttpResponse(status=200)
     if request.method != 'POST':
         return HttpResponseBadRequest('POST required')
 
@@ -31,10 +39,8 @@ def upload_video(request):
             except StopIteration:
                 return StreamingHttpResponse([], content_type='text/event-stream')
             except ImportError as e:
-                from django.http import HttpResponse
                 return HttpResponse(f"Dependency error: {e}. Install required packages.", status=500)
             except Exception as e:
-                from django.http import HttpResponse
                 return HttpResponse(f"Processing error: {e}", status=500)
 
             import itertools
@@ -42,7 +48,6 @@ def upload_video(request):
             response = StreamingHttpResponse(chained, content_type='text/event-stream')
             return response
         except Exception as e:
-            from django.http import HttpResponse
             return HttpResponse(f"Processing error: {e}", status=500)
     finally:
         try:
