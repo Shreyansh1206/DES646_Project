@@ -4,6 +4,9 @@
 
 set -e
 
+# Export GROQ API key for AI-powered feedback
+export GROQ_API_KEY="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"
+
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'

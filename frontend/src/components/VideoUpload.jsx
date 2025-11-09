@@ -209,6 +209,7 @@ function VideoUpload() {
       timestamp: new Date().toISOString(),
       exercise: finalResult?.final_label || 'Unknown',
       totalReps: finalResult?.total_count || 0,
+      score: finalResult?.score || 0,
       processingTime: processingTime,
       frames: feedback.map(f => ({
         frame: f.frame,
@@ -507,6 +508,14 @@ function VideoUpload() {
             <div className="result-item">
               <span className="result-label">Total Repetitions:</span>
               <span className="result-value">{finalResult.total_count}</span>
+            </div>
+            <div className="result-item">
+              <span className="result-label">Performance Score:</span>
+              <span className="result-value" style={{
+                color: finalResult.score >= 75 ? '#4ade80' : finalResult.score >= 50 ? '#fbbf24' : '#f87171'
+              }}>
+                {finalResult.score ? `${finalResult.score}/100` : 'N/A'}
+              </span>
             </div>
             <div className="result-item">
               <span className="result-label">Processing Time:</span>
