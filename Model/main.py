@@ -1,15 +1,22 @@
-from motionClassification.motionClassifier import predict_motion
-from angleCalculator import calculate_angles
-from autoEncoder.Deadlift.model import posture_correctness_score as pcs_deadlift
-from autoEncoder.Squat.model import posture_correctness_score as pcs_squat
-from autoEncoder.Pull_Up.model import posture_correctness_score as pcs_pullup
-from feedback import feedback
+import sys
+import os
 
-from preProcessing import sequence_from_videopath
+# Add parent directory to path when run as script
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from Model.motionClassification.motionClassifier import predict_motion
+from Model.angleCalculator import calculate_angles
+from Model.autoEncoder.Deadlift.model import posture_correctness_score as pcs_deadlift
+from Model.autoEncoder.Squat.model import posture_correctness_score as pcs_squat
+from Model.autoEncoder.Pull_Up.model import posture_correctness_score as pcs_pullup
+from Model.feedback import feedback
+
+from Model.preProcessing import sequence_from_videopath
 import json
 import ast
 import numpy as np
-from TTS import TTS
+from Model.TTS import TTS
 
 if __name__ == "__main__":
     video_path = "Input_Video/Deadlift_9.mp4"

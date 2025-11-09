@@ -68,26 +68,32 @@ def standardize_video(input_path, output_path, resolution=(640, 360), fps=30):
         out.release()
 
 def process_clip_3d(video_path):
+    """Extract 3D pose keypoints for each frame using MediaPipe.
+
+    Returns a (60, 33, 3) numpy array padded or truncated to MAX_FRAMES.
+    Raises ValueError if no pose landmarks are detected in any frame.
+    """
     cap = cv2.VideoCapture(video_path)
     keypoint_sequence = []
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
+    try:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = pose.process(frame_rgb)
-        if results.pose_landmarks:
-            landmarks = results.pose_landmarks.landmark
-            keypoints = [[lm.x, lm.y, lm.z] for lm in landmarks]
-            keypoint_sequence.append(np.array(keypoints))  # (33, 3)
-
-    cap.release()
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = pose.process(frame_rgb)
+            if results.pose_landmarks:
+                landmarks = results.pose_landmarks.landmark
+                keypoints = [[lm.x, lm.y, lm.z] for lm in landmarks]
+                keypoint_sequence.append(np.array(keypoints))  # (33, 3)
+    finally:
+        cap.release()
 
     if len(keypoint_sequence) == 0:
-        print("Error: No valid frames with keypoints found.")
-        sys.exit(1)
+        # Do NOT sys.exit inside a server context; raise so caller can handle.
+        raise ValueError(f"No valid frames with keypoints found in video: {video_path}")
 
     sequence = np.array(keypoint_sequence)  # shape: (T, 33, 3)
     T = sequence.shape[0]
@@ -101,9 +107,20 @@ def process_clip_3d(video_path):
     return sequence  # shape: (60, 33, 3)
 
 def sequence_from_videopath(video_path):
-    temp_path = "Input_Video/temp.mp4"
-    standardize_video(video_path, temp_path, RESOLUTION, FPS)
-    sequence = process_clip_3d(temp_path)
-    os.remove(temp_path)
+    """Full pipeline: standardize raw video then extract pose sequence.
 
-    return sequence
+    Raises ValueError with a human-friendly message if processing fails.
+    """
+    temp_path = "Input_Video/temp.mp4"
+    try:
+        standardize_video(video_path, temp_path, RESOLUTION, FPS)
+        sequence = process_clip_3d(temp_path)
+        return sequence
+    except Exception as e:
+        raise ValueError(f"Failed to process video: {e}") from e
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass

@@ -1,5 +1,5 @@
+import os
 import numpy as np
-from optree.typing import Sequence
 import torch
 import torch.nn as nn
 
@@ -28,7 +28,9 @@ class PostureAutoencoder(nn.Module):
 
 
 model = PostureAutoencoder()
-model.load_state_dict(torch.load("autoEncoder/Squat/trainedModel.pth", map_location="cpu"))
+_THIS_DIR = os.path.dirname(__file__)
+_MODEL_PATH = os.path.join(_THIS_DIR, 'trainedModel.pth')
+model.load_state_dict(torch.load(_MODEL_PATH, map_location="cpu"))
 
 def posture_correctness_score(sequence):
     sequence = sequence[:,:,:2]

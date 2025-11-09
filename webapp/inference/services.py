@@ -4,7 +4,9 @@ import time
 import numpy as np
 from typing import Generator
 import sys
+import os
 import warnings
+import base64
 
 
 # Validate Python version on module import
@@ -25,17 +27,35 @@ elif _py_version >= (3, 13):
 
 
 def stream_feedback_for_video(video_path: str) -> Generator[str, None, None]:
-    """Process video and yield Server-Sent Events (text/event-stream) lines as JSON strings.
+    """Process a workout video and stream JSON events.
 
-    Yields lines formatted as: 'data: {json}\n\n'
-    The consumer can parse each JSON chunk.
+    Per-frame events include joint knee angle, rep count, state (up/down), 2D landmarks,
+    and timestamps. After all frames, a final summary event is emitted containing:
+    - final_label: predicted exercise class (or null if classification failed)
+    - total_count: total repetition count
+    - total_frames: number of frames processed
+    - duration: total processing time seconds
+    - feedback: list of 2-3 coaching sentences (may be empty if generation failed)
+    - audio_base64: data URL of synthesized speech (or null if TTS unavailable)
+    - classification_error: error string if classification raised an exception
     """
+    # Add workspace root to sys.path for all top-level imports
+    workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+    if workspace_root not in sys.path:
+        sys.path.insert(0, workspace_root)
+    
     # Import heavy modules lazily
     try:
-        import cv2
+        from Model.angleCalculator import angle3d, LEFT_HIP, LEFT_KNEE, LEFT_ANKLE, calculate_angles
+        from Model.motionClassification.motionClassifier import predict_motion
+        from Model.feedback import feedback as feedback_fn
+        from Model.autoEncoder.Deadlift.model import posture_correctness_score as pcs_deadlift
+        from Model.autoEncoder.Squat.model import posture_correctness_score as pcs_squat
+        from Model.autoEncoder.Pull_Up.model import posture_correctness_score as pcs_pullup
+        from Model.TTS import TTS as tts_generate
         import mediapipe as mp
-        from angleCalculator import angle3d, LEFT_HIP, LEFT_KNEE, LEFT_ANKLE
-        from motionClassification.motionClassifier import predict_motion
+        import cv2
+        import numpy as _np
     except ImportError as e:
         err = {'error': f'Missing dependency: {e}. Please install required packages (see README).'}
         yield f"data: {json.dumps(err)}\n\n"
@@ -122,10 +142,131 @@ def stream_feedback_for_video(video_path: str) -> Generator[str, None, None]:
     elif sequence.shape[0] > 60:
         sequence = sequence[:60]
 
+    # Classification
     try:
         predicted = predict_motion(sequence)
-    except Exception:
+    except Exception as e:
         predicted = None
+        classification_error = str(e)
+    else:
+        classification_error = None
 
-    final = {'final_label': predicted, 'total_count': count, 'total_frames': frame_index, 'duration': round(time.time() - start_time, 3)}
+    # Build feedback + TTS only if classification succeeded and sequence has data
+    feedback_list = []
+    audio_b64 = None
+    try:
+        if predicted in {"Deadlift", "Squat", "Pull-Up"} and sequence.any():
+            # Load reference JSONs
+            try:
+                ref_scores_path = os.path.join(workspace_root, 'Model', 'referenceValues', 'reference_scores.json')
+                ref_angles_path = os.path.join(workspace_root, 'Model', 'referenceValues', 'reference_angles.json')
+                with open(ref_scores_path, 'r') as f: reference_scores = json.load(f)
+                with open(ref_angles_path, 'r') as f: reference_angles = json.load(f)
+            except Exception as e:
+                reference_scores = {}
+                reference_angles = {}
+                print(f"[inference] Failed loading reference values: {e}")
+
+            # Angle sets required per motion
+            if predicted == 'Deadlift':
+                required_angles = calculate_angles(sequence, ['torso', 'knee', 'hip'])
+                scores = pcs_deadlift(sequence)
+                ref_score_bucket = reference_scores.get('Deadlift_scores', {})
+                ref_angle_bucket = reference_angles.get('Deadlift_references', {})
+                needed_devs = ['torso','knee','hip']
+            elif predicted == 'Squat':
+                required_angles = calculate_angles(sequence, ['torso', 'knee', 'hip'])
+                scores = pcs_squat(sequence)
+                ref_score_bucket = reference_scores.get('Squat_scores', {})
+                ref_angle_bucket = reference_angles.get('Squat_references', {})
+                needed_devs = ['torso','knee','hip']
+            else:  # Pull-Up
+                required_angles = calculate_angles(sequence, ['torso', 'elbow', 'shoulder'])
+                scores = pcs_pullup(sequence)
+                ref_score_bucket = reference_scores.get('Pull_Up_scores', {})
+                ref_angle_bucket = reference_angles.get('Pull-Up_references', {})
+                needed_devs = ['torso','elbow','shoulder']
+
+            try:
+                min_net = ref_score_bucket.get('min_net_loss', 1.0)
+                max_net = ref_score_bucket.get('max_net_loss', 1.0)
+                net_score = (1 - (scores['loss'] - min_net)/(1.69*max_net - min_net)) * 100
+            except Exception:
+                net_score = 0.0
+
+            # Jointwise scores
+            jointwise_loss = scores.get('jointwise_loss', [])
+            jointwise_score = []
+            for i, jloss in enumerate(jointwise_loss):
+                try:
+                    mn = ref_score_bucket.get('min_jointwise_loss', [0]*33)[i]
+                    mx = ref_score_bucket.get('max_jointwise_loss', [1]*33)[i]
+                    jscore = (1 - (jloss - mn)/(1.69*mx - mn)) * 100
+                except Exception:
+                    jscore = 0.0
+                jointwise_score.append(jscore)
+
+            # Angle deviations
+            angle_deviations = {}
+            for part in needed_devs:
+                try:
+                    mean, mx, mn = required_angles[part]
+                    angle_deviations[f'mean_{part}_dev'] = mean - ref_angle_bucket.get(f'mean_{part}', 0)
+                    angle_deviations[f'max_{part}_dev'] = mx - ref_angle_bucket.get(f'max_{part}', 0)
+                    angle_deviations[f'min_{part}_dev'] = mn - ref_angle_bucket.get(f'min_{part}', 0)
+                except Exception:
+                    continue
+
+            # Map jointwise indices to names (same order as main.py)
+            joint_names = [
+                "nose","left_eye_inner","left_eye","left_eye_outer","right_eye_inner","right_eye","right_eye_outer",
+                "left_ear","right_ear","mouth_left","mouth_right","left_shoulder","right_shoulder","left_elbow","right_elbow",
+                "left_wrist","right_wrist","left_pinky","right_pinky","left_index","right_index","left_thumb","right_thumb",
+                "left_hip","right_hip","left_knee","right_knee","left_ankle","right_ankle","left_heel","right_heel",
+                "left_foot_index","right_foot_index"
+            ]
+            joint_scores_dict = {jn: jointwise_score[i] if i < len(jointwise_score) else 0.0 for i, jn in enumerate(joint_names)}
+
+            feedback_input = {
+                'exercise': predicted.lower(),
+                'net_score': net_score,
+                'jointwise_score': joint_scores_dict,
+                'angle_deviations': angle_deviations
+            }
+            # feedback_fn returns JSON array string
+            try:
+                fb_json_str = feedback_fn(feedback_input)
+                feedback_list = json.loads(fb_json_str)
+            except Exception as e:
+                print(f"[inference] feedback generation failed: {e}")
+                feedback_list = []
+
+            # Generate TTS once (concatenate sentences)
+            if feedback_list:
+                full_text = '. '.join(feedback_list)
+                try:
+                    audio_path = tts_generate(full_text)
+                    with open(audio_path, 'rb') as f:
+                        raw = f.read()
+                    # Guess mime
+                    ext = os.path.splitext(audio_path)[1].lower()
+                    mime = 'audio/mpeg' if ext == '.mp3' else 'audio/wav'
+                    audio_b64 = f"data:{mime};base64," + base64.b64encode(raw).decode('utf-8')
+                except Exception as e:
+                    print(f"[inference] TTS generation failed: {e}")
+                    audio_b64 = None
+    except Exception as e:
+        print(f"[inference] Unexpected feedback/TTS error: {e}")
+        feedback_list = []
+        audio_b64 = None
+
+    final = {
+        'final_label': predicted,
+        'classification_error': classification_error,
+        'total_count': count,
+        'total_frames': frame_index,
+        'duration': round(time.time() - start_time, 3),
+        'feedback': feedback_list,
+        'audio_base64': audio_b64
+    }
     yield f"data: {json.dumps(final)}\n\n"

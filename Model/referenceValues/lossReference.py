@@ -1,10 +1,16 @@
-from autoEncoder.Deadlift.model import posture_correctness_score as pcs_deadlift
-from autoEncoder.Squat.model import posture_correctness_score as pcs_squat
-from autoEncoder.Pull_Up.model import posture_correctness_score as pcs_pullup
+import sys
+import os
+
+# Add parent directory to path when run as script
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from Model.autoEncoder.Deadlift.model import posture_correctness_score as pcs_deadlift
+from Model.autoEncoder.Squat.model import posture_correctness_score as pcs_squat
+from Model.autoEncoder.Pull_Up.model import posture_correctness_score as pcs_pullup
 
 import numpy as np
 import json 
-import os
 from tqdm import tqdm
 
 def update_json(file_path: str, new_data: dict):

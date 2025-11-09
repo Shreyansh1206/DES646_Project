@@ -56,22 +56,25 @@ else
 fi
 
 # Validate selected Python command actually runs
-if ! $PYTHON_CMD -c "import sys; print(sys.version)" >/dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  Selected Python command failed to run. Attempting fallback...${NC}"
-    if command -v python3 >/dev/null 2>&1; then
-        PYTHON_CMD="python3"
-        echo -e "${GREEN}✓ Falling back to system python3${NC}"
-    elif [ -x ".venv/bin/python" ]; then
-        PYTHON_CMD=".venv/bin/python"
-        echo -e "${GREEN}✓ Falling back to .venv/bin/python${NC}"
-    else
-        echo -e "${RED}✗ No working Python interpreter found${NC}"
-        exit 1
-    fi
-    # Re-validate fallback
+# Note: conda run can be slow, so we skip the validation for conda
+if [[ ! "$PYTHON_CMD" =~ "conda run" ]]; then
     if ! $PYTHON_CMD -c "import sys; print(sys.version)" >/dev/null 2>&1; then
-        echo -e "${RED}✗ Fallback Python interpreter is not working either${NC}"
-        exit 1
+        echo -e "${YELLOW}⚠️  Selected Python command failed to run. Attempting fallback...${NC}"
+        if command -v python3 >/dev/null 2>&1; then
+            PYTHON_CMD="python3"
+            echo -e "${GREEN}✓ Falling back to system python3${NC}"
+        elif [ -x ".venv/bin/python" ]; then
+            PYTHON_CMD=".venv/bin/python"
+            echo -e "${GREEN}✓ Falling back to .venv/bin/python${NC}"
+        else
+            echo -e "${RED}✗ No working Python interpreter found${NC}"
+            exit 1
+        fi
+        # Re-validate fallback
+        if ! $PYTHON_CMD -c "import sys; print(sys.version)" >/dev/null 2>&1; then
+            echo -e "${RED}✗ Fallback Python interpreter is not working either${NC}"
+            exit 1
+        fi
     fi
 fi
 
@@ -103,92 +106,75 @@ trap cleanup SIGINT SIGTERM
 
 # Proactively stop lingering dev servers to avoid port confusion
 echo -e "${YELLOW}Checking for lingering dev servers...${NC}"
-pkill -f "/frontend/node_modules/.bin/vite" 2>/dev/null || true
+lsof -tiTCP:8000 | xargs kill -9 2>/dev/null || true
+lsof -tiTCP:3000 | xargs kill -9 2>/dev/null || true
 pkill -f "manage.py runserver" 2>/dev/null || true
-sleep 0.5
+pkill -f "node.*vite" 2>/dev/null || true
+sleep 1
 
-# Hard kill any listeners on typical ports (frontend 3000/3001/5173, backend 8000-8009)
-for p in 3000 3001 5173; do
-    if lsof -tiTCP:$p >/dev/null 2>&1; then
-        lsof -tiTCP:$p | xargs kill -9 2>/dev/null || true
-    fi
-done
-for p in 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009; do
-    if lsof -tiTCP:$p >/dev/null 2>&1; then
-        lsof -tiTCP:$p | xargs kill -9 2>/dev/null || true
-    fi
-done
-sleep 0.5
-
-# Find a free backend port starting from 8000
-find_free_port() {
-    for p in 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009; do
-        if ! lsof -iTCP:$p -sTCP:LISTEN >/dev/null 2>&1; then
-            echo $p
-            return 0
-        fi
-    done
-    return 1
-}
-
-BACKEND_PORT=$(find_free_port)
-if [ -z "$BACKEND_PORT" ]; then
-    echo -e "${RED}✗ No free backend port found in 8000-8009${NC}"
-    exit 1
-fi
-export BACKEND_PORT
-
-# Start Django backend
-echo -e "${GREEN}[Backend]${NC} Starting Django server on http://127.0.0.1:${BACKEND_PORT}"
-cd webapp
-$PYTHON_CMD manage.py runserver 127.0.0.1:${BACKEND_PORT} 2>&1 | sed "s/^/$(echo -e ${GREEN})[Backend]$(echo -e ${NC}) /" &
+# Start Django backend on port 8000
+echo -e "${GREEN}[Backend]${NC} Starting Django server on http://127.0.0.1:8000"
+$PYTHON_CMD webapp/manage.py runserver 127.0.0.1:8000 > backend.log 2>&1 &
 BACKEND_PID=$!
-cd ..
+echo -e "${GREEN}[Backend]${NC} PID: $BACKEND_PID"
 
 # Wait for backend to listen
+echo -e "${YELLOW}Waiting for backend to start...${NC}"
 wait_for_backend() {
-    for i in {1..20}; do
-        if command -v nc >/dev/null 2>&1; then
-            nc -z 127.0.0.1 ${BACKEND_PORT} && return 0
-        else
-            lsof -iTCP:${BACKEND_PORT} -sTCP:LISTEN >/dev/null 2>&1 && return 0
+    for i in {1..30}; do
+        if lsof -iTCP:8000 -sTCP:LISTEN >/dev/null 2>&1; then
+            return 0
         fi
         sleep 0.5
     done
     return 1
 }
 
-if ! wait_for_backend; then
-    echo -e "${RED}✗ Backend failed to start on port ${BACKEND_PORT}${NC}"
-    echo -e "${YELLOW}Continuing to start frontend; the UI will show backend as unreachable.${NC}"
+if wait_for_backend; then
+    echo -e "${GREEN}✓ Backend is ready on http://127.0.0.1:8000${NC}"
+else
+    echo -e "${RED}✗ Backend failed to start${NC}"
+    echo -e "${YELLOW}Check backend.log for errors${NC}"
+    tail -20 backend.log
+    exit 1
 fi
 
-# Start Vite frontend
-echo -e "${BLUE}[Frontend]${NC} Starting Vite dev server (proxy -> http://127.0.0.1:${BACKEND_PORT})"
+# Start Vite frontend on port 3000
+echo -e "${BLUE}[Frontend]${NC} Starting Vite dev server on http://localhost:3000"
 cd frontend
-BACKEND_PORT=${BACKEND_PORT} VITE_BACKEND_PORT=${BACKEND_PORT} npm start 2>&1 | sed "s/^/$(echo -e ${BLUE})[Frontend]$(echo -e ${NC}) /" &
+npm run dev > frontend.log 2>&1 &
 FRONTEND_PID=$!
+echo -e "${BLUE}[Frontend]${NC} PID: $FRONTEND_PID"
 cd ..
 
-echo -e "\n${GREEN}✓ Both services started${NC}"
-echo -e "${YELLOW}Access the app at: http://localhost:3000 (or the next available port)${NC}"
+echo -e "\n${GREEN}✓ Both services starting...${NC}"
+echo -e "${YELLOW}Backend:  http://localhost:8000${NC}"
+echo -e "${YELLOW}Frontend: http://localhost:3000${NC}"
 echo -e "${YELLOW}Press Ctrl+C to stop both services${NC}\n"
 
-# Auto-open browser when frontend is ready (macOS 'open')
+# Wait for frontend to be ready, then open browser
+echo -e "${YELLOW}Waiting for frontend to start...${NC}"
 wait_for_frontend() {
     for i in {1..40}; do
         if lsof -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then
             return 0
         fi
-        sleep 0.25
+        sleep 0.5
     done
     return 1
 }
 
-if command -v open >/dev/null 2>&1; then
-    if wait_for_frontend; then
+if wait_for_frontend; then
+    echo -e "${GREEN}✓ Frontend is ready on http://localhost:3000${NC}\n"
+    # Auto-open browser (macOS)
+    if command -v open >/dev/null 2>&1; then
+        echo -e "${BLUE}🌐 Opening browser...${NC}"
+        sleep 1
         open "http://localhost:3000" >/dev/null 2>&1 || true
     fi
+else
+    echo -e "${YELLOW}⚠️  Frontend may still be starting. Check frontend.log${NC}"
+    tail -10 frontend/frontend.log 2>/dev/null || true
 fi
 
 # Wait for both processes
