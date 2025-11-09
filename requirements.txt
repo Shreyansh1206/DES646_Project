@@ -5,3 +5,12 @@ opencv-python==4.12.0.88
 mediapipe==0.10.14
 torch==2.2.2
 numpy==2.2.6
+groq
+gtts
+pydub
+pyttsx3
+optree==0.17.0
+
+# Production/runtime helpers
+gunicorn
+django-cors-headers

@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import mediapipe as mp
 import sys
+import os
 
 MAX_FRAMES = 60
 NUM_KEYPOINTS = 33
@@ -100,8 +101,9 @@ def process_clip_3d(video_path):
     return sequence  # shape: (60, 33, 3)
 
 def sequence_from_videopath(video_path):
-    temp_path = "temp.mp4"
+    temp_path = "Input_Video/temp.mp4"
     standardize_video(video_path, temp_path, RESOLUTION, FPS)
     sequence = process_clip_3d(temp_path)
+    os.remove(temp_path)
 
     return sequence

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual envs
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/node_modules/
+pnpm-lock.yaml
+
+# Logs & local artifacts
+*.log
+backend.log
+start.log
+last_upload.log
+
+# Databases
+*.sqlite3
+webapp/db.sqlite3
+
+# Videos and large temp artifacts
+Model/Input_Video/*
+!Model/Input_Video/.gitkeep
+tts_output/
+
+# Build caches
+.DS_Store
+dist/
+.vite/

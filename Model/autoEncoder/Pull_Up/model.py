@@ -28,7 +28,7 @@ class PostureAutoencoder(nn.Module):
 
 
 model = PostureAutoencoder()
-model.load_state_dict(torch.load("autoEncoder/Pull-Up/trainedModel.pth", map_location="cpu"))
+model.load_state_dict(torch.load("autoEncoder/Pull_Up/trainedModel.pth", map_location="cpu"))
 
 def posture_correctness_score(sequence):
     sequence = sequence[:,:,:2]

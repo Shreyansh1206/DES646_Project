@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import BlurText from './BlurText'
 import './VideoUpload.css'
 
 function VideoUpload() {
@@ -9,6 +10,8 @@ function VideoUpload() {
   const [feedback, setFeedback] = useState([])
   const feedbackByFrameRef = useRef({})
   const [finalResult, setFinalResult] = useState(null)
+  const [nlpFeedback, setNlpFeedback] = useState('')
+  const [ttsAudioUrl, setTtsAudioUrl] = useState(null)
   const [error, setError] = useState(null)
   const [progress, setProgress] = useState(0)
   const [processingTime, setProcessingTime] = useState(0)
@@ -16,6 +19,7 @@ function VideoUpload() {
   const fileInputRef = useRef(null)
   const startTimeRef = useRef(null)
   const timerRef = useRef(null)
+  const backendBase = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '')
   const backendPort = import.meta.env.VITE_BACKEND_PORT || '8000'
   const [showSkeleton, setShowSkeleton] = useState(true)
 
@@ -70,7 +74,8 @@ function VideoUpload() {
     let abort = false
     const check = async () => {
       try {
-        const res = await fetch('/inference/upload/', { method: 'HEAD' })
+        const url = backendBase ? `${backendBase}/inference/upload/` : '/inference/upload/'
+        const res = await fetch(url, { method: 'HEAD' })
         if (!abort) setBackendStatus(res.ok ? 'up' : 'down')
       } catch (e) {
         if (!abort) setBackendStatus('down')
@@ -90,6 +95,7 @@ function VideoUpload() {
     setIsUploading(true)
     setFeedback([])
     setFinalResult(null)
+  setTtsAudioUrl(null)
     setError(null)
     setProgress(0)
     setProcessingTime(0)
@@ -98,7 +104,8 @@ function VideoUpload() {
     formData.append('file', file)
 
     try {
-      const response = await fetch('/inference/upload/', {
+      const url = backendBase ? `${backendBase}/inference/upload/` : '/inference/upload/'
+      const response = await fetch(url, {
         method: 'POST',
         body: formData,
       })
@@ -107,8 +114,8 @@ function VideoUpload() {
         throw new Error(`Upload failed: ${response.statusText}`)
       }
 
-      // Read the SSE stream
-  const reader = response.body.getReader()
+    // Read the SSE stream
+    const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
       let frameCount = 0
@@ -135,6 +142,26 @@ function VideoUpload() {
               } else if (data.final_label !== undefined) {
                 setFinalResult(data)
                 setProgress(100)
+                // NLP feedback integration: synthesize feedback text
+                if (data.feedback) {
+                  // Backend sends feedback as an array, join into a single string
+                  const feedbackText = Array.isArray(data.feedback) 
+                    ? data.feedback.join('. ') 
+                    : data.feedback
+                  setNlpFeedback(feedbackText)
+                  // Text-to-speech
+                  if ('speechSynthesis' in window) {
+                    const utter = new window.SpeechSynthesisUtterance(feedbackText)
+                    utter.rate = 1.05
+                    utter.pitch = 1.0
+                    utter.lang = 'en-US'
+                    window.speechSynthesis.cancel()
+                    window.speechSynthesis.speak(utter)
+                  }
+                }
+                if (data.audio_base64) {
+                  setTtsAudioUrl(data.audio_base64)
+                }
               } else {
                 frameCount++
                 feedbackByFrameRef.current[data.frame] = data
@@ -494,6 +521,22 @@ function VideoUpload() {
               <span className="result-value">{avgKneeAngle}°</span>
             </div>
           </div>
+          {(nlpFeedback || ttsAudioUrl) && (
+            <div className="nlp-feedback">
+              {nlpFeedback && (
+                <>
+                  <h3>🧠 Coaching Feedback</h3>
+                  <BlurText text={nlpFeedback} animateBy="words" direction="top" className="nlp-blur-text" />
+                </>
+              )}
+              {ttsAudioUrl && (
+                <div className="tts-audio">
+                  <h4>🔊 Audio Feedback</h4>
+                  <audio controls src={ttsAudioUrl} style={{ width: '100%' }} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

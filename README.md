@@ -134,6 +134,58 @@ See `requirements.txt` for the complete list.
 - **Video processing uses OpenCV** (no ffmpeg dependency required).
 - If you encounter MediaPipe import errors, ensure you're using Python 3.10 or 3.11.
 
+## Deployment (Free Tier Strategy)
+
+| Component | Platform | Reason |
+|-----------|----------|--------|
+| Frontend (Vite+React) | Vercel | Instant static deploy, global CDN, simple env vars |
+| Backend (Django + Torch + MediaPipe) | Railway (or Render) | Persistent container, longer processing allowed |
+
+### Backend Steps (Railway)
+1. Add `gunicorn` and `django-cors-headers` (already in `requirements.txt`).
+2. Ensure `Procfile` exists with: `web: gunicorn webapp.webapp.wsgi:application --bind 0.0.0.0:$PORT`.
+3. Set env vars:
+  - `DJANGO_SECRET_KEY` (random string)
+  - `DJANGO_DEBUG=0`
+  - `CORS_ALLOW_ALL=0`
+  - `CORS_ALLOWED_ORIGINS=https://your-vercel-app.vercel.app`
+4. Deploy from GitHub; Railway auto-installs deps.
+5. Test: `curl -I https://<railway-url>/inference/upload/` should return `200`.
+
+### Frontend Steps (Vercel)
+1. Create project pointing to `frontend/` subdirectory.
+2. Environment Variable: `VITE_BACKEND_URL=https://<railway-url>`
+3. Build Command: `npm run build`, Output: `dist`.
+4. Deploy. Upload flow will use absolute backend URL.
+
+### CORS & Security
+- In development we allow all origins. In production set `CORS_ALLOW_ALL=0` and define `CORS_ALLOWED_ORIGINS`.
+- Keep model weight files out of public web serving (only loaded by backend).
+
+### Updating Thresholds / Performance
+- Adjust repetition logic in `webapp/webapp/inference/services.py`.
+- Remove or tweak the `time.sleep(0.01)` for faster SSE.
+
+### Environment Variable Summary
+| Variable | Purpose |
+|----------|---------|
+| DJANGO_SECRET_KEY | Django security key |
+| DJANGO_DEBUG | `1` for debug, `0` for production |
+| DJANGO_ALLOWED_HOSTS | Comma-separated hostnames |
+| CORS_ALLOW_ALL | `1` (default) open; set `0` to restrict |
+| CORS_ALLOWED_ORIGINS | Comma-separated list when restricted |
+| VITE_BACKEND_URL | Frontend absolute API base |
+| GROQ_API_KEY | If using Groq for NLP feedback |
+
+### Large Files & Git Hygiene
+- `.gitignore` excludes logs, videos, node_modules, and cache artifacts.
+- Keep an empty placeholder (`Model/Input_Video/.gitkeep`) so folder stays tracked.
+
+### Free Tier Considerations
+- Long videos increase CPU time; consider limiting upload size client-side.
+- If free quota is exceeded, move backend to Render or an EC2 instance.
+- Future optimization: batch angle computations, cache model load, optional GPU.
+
 ## Troubleshooting
 
 ### "Missing dependency: No module named 'mediapipe'"
