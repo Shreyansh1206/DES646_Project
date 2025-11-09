@@ -1,207 +1,168 @@
-# DES646 Project - Web UI
+# DES646 Project — Web UI + Inference Service
 
-This repo contains model code and a minimal Django web UI to upload videos and stream simple feedback.
+Upload a workout video, run MediaPipe + PyTorch inference, and stream live feedback via a Django backend with a modern Vite + React frontend. Optional TTS feedback is supported.
 
-## ⚠️ Python Version Requirement
+## Requirements
 
-**This project requires Python 3.10 or 3.11** due to MediaPipe compatibility. Python 3.13+ is not supported.
+- Python 3.10 or 3.11 (MediaPipe wheels do not support 3.13 yet)
+- Node.js 18+ and npm (for Vite 6)
+- macOS/Windows/Linux supported; conda recommended on macOS (Apple Silicon)
+- No ffmpeg needed (OpenCV is used for video I/O)
 
-**No ffmpeg required** – Video processing uses OpenCV for better portability.
+## One-time setup
 
-## Quick Start (Recommended)
-
-Use the combined start script to launch both backend and frontend:
-
-```bash
-# Make sure you have conda with mp-env or des646-py311 environment, or a .venv with Python 3.11
-./start.sh
-```
-
-The script will:
-- Check your Python environment (conda or venv)
-- Verify Python version compatibility
-- Install frontend dependencies if needed
-- Start Django backend on http://127.0.0.1:8000
-- Start Vite frontend on http://localhost:3000
-- Display colored logs from both services
-
-Press `Ctrl+C` to stop both services.
-
-## Manual Setup (conda — recommended for macOS)
-
-**Prerequisites:**
-- Install conda or mamba (Miniforge/Mambaforge recommended for Apple Silicon): https://github.com/conda-forge/miniforge
-
-**Setup:**
-
-1. Create a conda environment with Python 3.11 and install dependencies:
+Run the setup helper to prepare Python and Node environments and apply migrations.
 
 ```bash
-# Create and activate environment
-conda create -n mp-env python=3.11 -y
-conda activate mp-env
-
-# Install dependencies
-pip install -r requirements.txt
+./setup.sh
 ```
 
-2. Run the Django dev server:
+What it does:
+- Creates/uses a conda env `mp-env` (or a local `.venv`) with Python 3.11
+- Installs Python dependencies from `requirements.txt`
+- Installs frontend dependencies in `frontend/`
+- Creates project folders like `Model/Input_Video` and `tts_output`
+- Runs initial Django migrations
 
-```bash
-cd webapp
-python manage.py runserver
-```
+## Daily development
 
-3. Open http://127.0.0.1:8000/ and upload a small mp4 to see streamed feedback.
-
-## Alternative: pip + venv
-
-**Note:** You must use Python 3.10 or 3.11. MediaPipe wheels are not available for Python 3.13+.
-
-```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cd webapp
-python manage.py runserver
-```
-
-## Running the React Frontend (Development)
-
-The frontend is a React app that connects to the Django backend.
-
-1. Install Node.js dependencies:
-
-```bash
-cd frontend
-npm install
-```
-
-2. Start the React dev server (make sure Django backend is running first):
-
-```bash
-npm start
-```
-
-(`npm run dev` also works; `npm start` added for convention.)
-
-3. Open http://localhost:3000 in your browser
-
-The Vite dev server automatically proxies API requests to the Django backend at http://127.0.0.1:8000.
-
-## Development Workflow
-
-### Option 1: Combined Start Script (Easiest)
+Start both backend and frontend with one command:
 
 ```bash
 ./start.sh
 ```
 
-Launches both backend and frontend with a single command. Uses your configured conda environment or .venv.
+This will:
+- Detect and use your conda env (`mp-env`/`des646-py311`) or `.venv`
+- Start Django on http://127.0.0.1:8000
+- Start Vite on http://localhost:3000
+- Auto-open the browser (macOS)
 
-### Option 2: Manual (Two Terminals)
+Press Ctrl+C to stop both.
 
-**Terminal 1 (Backend):**
+### Run services manually (two terminals)
+
+Terminal 1 (backend):
 ```bash
-conda activate mp-env  # or: source .venv/bin/activate
+conda activate mp-env   # or: source .venv/bin/activate
 cd webapp
-python manage.py runserver
+python manage.py runserver 127.0.0.1:8000
 ```
 
-**Terminal 2 (Frontend):**
+Terminal 2 (frontend):
 ```bash
 cd frontend
-npm start
+npm start   # or: npm run dev
 ```
 
-Then visit http://localhost:3000 to use the app.
+Open http://localhost:3000. During development, Vite proxies `/inference` requests to http://127.0.0.1:8000 (see `frontend/vite.config.js`).
 
-## Dependency Versions
+## Environment variables
 
-This project uses pinned versions for reproducibility:
+Set these in your shell (zsh) before running, as needed:
+
+```bash
+export DJANGO_DEBUG=1
+export DJANGO_SECRET_KEY="a-long-random-string"
+export GROQ_API_KEY="your-groq-key"              # for AI/NLP feedback (optional)
+export DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1"
+```
+
+Frontend (production builds on Vercel or static hosting) should point at your backend:
+
+```bash
+export VITE_BACKEND_URL="https://your-backend-host"
+```
+
+Note: The `start.sh` file currently exports a placeholder `GROQ_API_KEY` for local dev. Override it by setting your own key in the shell before running, or remove that line if not needed.
+
+## Frontend
+
+Common commands:
+
+```bash
+cd frontend
+npm install      # once
+npm run dev      # start dev server on :3000
+npm run build    # production build to dist/
+npm run preview  # serve the built app locally
+```
+
+## Backend
+
+Main project lives under `webapp/` and exposes inference endpoints under `/inference/*` (see `webapp/webapp/inference/`). A minimal SQLite DB (`webapp/db.sqlite3`) is used for Django admin/auth defaults.
+
+Endpoints (examples):
+- POST `/inference/upload/` — upload an mp4 and stream feedback (Server-Sent Events)
+
+## Models and data
+
+Pretrained weights are tracked in-repo for quick starts:
+- `Model/autoEncoder/*/trainedModel.pth`
+- `Model/motionClassification/lstm_classification_model.pth`
+
+Supporting references live in `Model/referenceValues/`. Input videos are written to `Model/Input_Video/` during processing; speech is output to `tts_output/`.
+
+## Dependency versions (pinned)
+
 - Django 5.2.8
 - MediaPipe 0.10.14
 - PyTorch 2.2.2
 - OpenCV 4.12.0.88
 - NumPy 2.2.6
 
-See `requirements.txt` for the complete list.
+See `requirements.txt` for the full list.
 
-## Notes
-- This is an initial scaffold. The backend reuses `preProcessing.py`, `angleCalculator.py` and `motionClassification/motionClassifier.py` from the repo.
-- The SSE streaming is implemented using an HTTP streaming response and a simple repetition heuristic; we will iterate to improve accuracy.
-- The React frontend shows live feedback (knee angle, rep count, position) as the video is processed.
-- **Video processing uses OpenCV** (no ffmpeg dependency required).
-- If you encounter MediaPipe import errors, ensure you're using Python 3.10 or 3.11.
+## Repository structure (high level)
 
-## Deployment (Free Tier Strategy)
+```
+frontend/          # Vite + React app
+webapp/            # Django project (wsgi, urls, views)
+Model/             # Inference code, models, and references
+  autoEncoder/     # Exercise-specific autoencoders (trainedModel.pth)
+  motionClassification/  # LSTM classifier + label map
+  referenceValues/ # Angles and scoring references
+tts_output/        # Generated speech outputs
+Procfile           # gunicorn entry for deployment
+setup.sh           # one-time environment setup helper
+start.sh           # dev convenience to start backend + frontend together
+requirements.txt   # pinned Python deps
+```
 
-| Component | Platform | Reason |
-|-----------|----------|--------|
-| Frontend (Vite+React) | Vercel | Instant static deploy, global CDN, simple env vars |
-| Backend (Django + Torch + MediaPipe) | Railway (or Render) | Persistent container, longer processing allowed |
+## Deployment (suggested)
 
-### Backend Steps (Railway)
-1. Add `gunicorn` and `django-cors-headers` (already in `requirements.txt`).
-2. Ensure `Procfile` exists with: `web: gunicorn webapp.webapp.wsgi:application --bind 0.0.0.0:$PORT`.
-3. Set env vars:
-  - `DJANGO_SECRET_KEY` (random string)
-  - `DJANGO_DEBUG=0`
-  - `CORS_ALLOW_ALL=0`
-  - `CORS_ALLOWED_ORIGINS=https://your-vercel-app.vercel.app`
-4. Deploy from GitHub; Railway auto-installs deps.
-5. Test: `curl -I https://<railway-url>/inference/upload/` should return `200`.
+Backend: Railway (or Render/Heroku-compatible)
+- Ensure `Procfile` contains: `web: gunicorn webapp.webapp.wsgi:application --bind 0.0.0.0:$PORT`
+- Configure env vars: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=0`, `DJANGO_ALLOWED_HOSTS`, and CORS settings
 
-### Frontend Steps (Vercel)
-1. Create project pointing to `frontend/` subdirectory.
-2. Environment Variable: `VITE_BACKEND_URL=https://<railway-url>`
-3. Build Command: `npm run build`, Output: `dist`.
-4. Deploy. Upload flow will use absolute backend URL.
+Frontend: Vercel
+- Project root: `frontend/`
+- Build: `npm run build` ; Output: `dist`
+- Env: `VITE_BACKEND_URL=https://<railway-app>`
 
-### CORS & Security
-- In development we allow all origins. In production set `CORS_ALLOW_ALL=0` and define `CORS_ALLOWED_ORIGINS`.
-- Keep model weight files out of public web serving (only loaded by backend).
+### CORS
 
-### Updating Thresholds / Performance
-- Adjust repetition logic in `webapp/webapp/inference/services.py`.
-- Remove or tweak the `time.sleep(0.01)` for faster SSE.
-
-### Environment Variable Summary
-| Variable | Purpose |
-|----------|---------|
-| DJANGO_SECRET_KEY | Django security key |
-| DJANGO_DEBUG | `1` for debug, `0` for production |
-| DJANGO_ALLOWED_HOSTS | Comma-separated hostnames |
-| CORS_ALLOW_ALL | `1` (default) open; set `0` to restrict |
-| CORS_ALLOWED_ORIGINS | Comma-separated list when restricted |
-| VITE_BACKEND_URL | Frontend absolute API base |
-| GROQ_API_KEY | If using Groq for NLP feedback |
-
-### Large Files & Git Hygiene
-- `.gitignore` excludes logs, videos, node_modules, and cache artifacts.
-- Keep an empty placeholder (`Model/Input_Video/.gitkeep`) so folder stays tracked.
-
-### Free Tier Considerations
-- Long videos increase CPU time; consider limiting upload size client-side.
-- If free quota is exceeded, move backend to Render or an EC2 instance.
-- Future optimization: batch angle computations, cache model load, optional GPU.
+In development, the Vite dev server proxies to `127.0.0.1:8000`. In production, set `CORS_ALLOWED_ORIGINS` on the backend to your frontend domain and set `DJANGO_DEBUG=0`.
 
 ## Troubleshooting
 
-### "Missing dependency: No module named 'mediapipe'"
-- **Cause:** Python 3.13+ doesn't have MediaPipe wheels available.
-- **Fix:** Use Python 3.10 or 3.11. Create conda env: `conda create -n mp-env python=3.11 -y`
+Ports already in use
+- If :3000 or :8000 is taken, stop old dev servers. `start.sh` attempts to kill lingering processes automatically.
 
-### "Internal Server Error" on upload
-- **Common causes:**
-  1. Django server not running → Run `./start.sh` or manually start Django
-  2. Wrong Python version → Check you're using conda env with Python 3.11
-  3. Missing dependencies → Run `pip install -r requirements.txt`
-  4. Invalid video file → Upload must be a valid .mp4 video
-- **Debug:** Check terminal logs where Django is running for detailed error messages
+MediaPipe import error
+- Ensure Python 3.10 or 3.11. Recreate env: `conda create -n mp-env python=3.11 -y` then `pip install -r requirements.txt`.
 
-### Frontend can't connect to backend
-- Ensure Django is running on http://127.0.0.1:8000
-- Frontend dev server proxies `/inference` requests to Django automatically
-- If ports conflict, check `vite.config.js` proxy settings
-# DES646_Project
+Frontend cannot reach backend
+- Confirm backend is at http://127.0.0.1:8000 and see `vite.config.js` proxy. For production, set `VITE_BACKEND_URL`.
+
+Database issues after code changes
+- Run migrations: `python webapp/manage.py migrate`.
+
+Video upload fails
+- Only valid `.mp4` files are supported in the current flow. Try a short clip first.
+
+## Notes
+
+- Backend computations reuse `Model/preProcessing.py`, `Model/angleCalculator.py`, and `Model/motionClassification/motionClassifier.py`.
+- Streaming is implemented with SSE; you can tune thresholds and timings in `webapp/webapp/inference/services.py`.
+- On Apple Silicon, prefer Miniforge/Mambaforge builds for better PyTorch/NumPy performance.
