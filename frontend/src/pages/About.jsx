@@ -75,15 +75,6 @@ export default function About() {
         </section>
 
         <section className="about-section">
-          <h2>Supported Exercises</h2>
-          <ul className="exercise-list">
-            <li>🏋️ Squats - Analyze depth, knee alignment, and form</li>
-            <li>💪 Deadlifts - Track hip hinge, back position, and bar path</li>
-            <li>🤸 Pull-ups - Count reps and measure range of motion</li>
-          </ul>
-        </section>
-
-        <section className="about-section">
           <h2>Features</h2>
           <ul className="features-list">
             <li>✅ Real-time video processing with Server-Sent Events</li>

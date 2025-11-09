@@ -91,7 +91,7 @@ html {
   margin: 0 0 2.5rem;
   letter-spacing: -0.04em;
   line-height: 0.9;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .section-description {
@@ -223,7 +223,7 @@ html {
   margin: 0 0 1rem;
   letter-spacing: -0.04em;
   line-height: 0.9;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .section-header p {
@@ -387,7 +387,7 @@ html {
 .exercises-section .section-title {
   font-size: 6.5rem;
   font-weight: 900;
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: -0.04em;
   line-height: 0.9;
 }

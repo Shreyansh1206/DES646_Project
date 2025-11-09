@@ -4,15 +4,20 @@ import './VideoUpload.css'
 function VideoUpload() {
   const [file, setFile] = useState(null)
   const [videoPreview, setVideoPreview] = useState(null)
+  const canvasRef = useRef(null)
   const [isUploading, setIsUploading] = useState(false)
   const [feedback, setFeedback] = useState([])
+  const feedbackByFrameRef = useRef({})
   const [finalResult, setFinalResult] = useState(null)
   const [error, setError] = useState(null)
   const [progress, setProgress] = useState(0)
   const [processingTime, setProcessingTime] = useState(0)
+  const [backendStatus, setBackendStatus] = useState('checking') // checking | up | down
   const fileInputRef = useRef(null)
   const startTimeRef = useRef(null)
   const timerRef = useRef(null)
+  const backendPort = import.meta.env.VITE_BACKEND_PORT || '8000'
+  const [showSkeleton, setShowSkeleton] = useState(true)
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -60,6 +65,22 @@ function VideoUpload() {
     }
   }, [isUploading])
 
+  // Backend connectivity check
+  useEffect(() => {
+    let abort = false
+    const check = async () => {
+      try {
+        const res = await fetch('/inference/upload/', { method: 'HEAD' })
+        if (!abort) setBackendStatus(res.ok ? 'up' : 'down')
+      } catch (e) {
+        if (!abort) setBackendStatus('down')
+      }
+    }
+    check()
+    const id = setInterval(check, 5000)
+    return () => { abort = true; clearInterval(id) }
+  }, [])
+
   const handleUpload = async () => {
     if (!file) {
       setError('Please select a video file first')
@@ -87,7 +108,7 @@ function VideoUpload() {
       }
 
       // Read the SSE stream
-      const reader = response.body.getReader()
+  const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
       let frameCount = 0
@@ -116,10 +137,11 @@ function VideoUpload() {
                 setProgress(100)
               } else {
                 frameCount++
+                feedbackByFrameRef.current[data.frame] = data
                 setFeedback(prev => {
-                  // Keep last 100 frames for performance
+                  // Keep last 200 frames in ordered array (for graphs)
                   const updated = [...prev, data]
-                  return updated.slice(-100)
+                  return updated.slice(-200)
                 })
                 setProgress(Math.min(95, (frameCount / maxFrames) * 100))
               }
@@ -181,12 +203,112 @@ function VideoUpload() {
   }
 
   const latestFeedback = feedback.length > 0 ? feedback[feedback.length - 1] : null
+  const videoRef = useRef(null)
+  const [syncedFrame, setSyncedFrame] = useState(null)
+
+  // Pose connections (subset for clarity)
+  const POSE_EDGES = [
+    [11,13],[13,15], // left arm
+    [12,14],[14,16], // right arm
+    [23,25],[25,27], // left leg
+    [24,26],[26,28], // right leg
+    [11,12], // shoulders
+    [23,24], // hips
+    [11,23],[12,24] // torso diagonals
+  ]
+
+  // Frame sync: use requestVideoFrameCallback if available to align skeleton to current video frame proportionally
+  useEffect(() => {
+    const vid = videoRef.current
+    if (!vid) return
+    let rafId
+    const loop = () => {
+      if (!vid || !videoPreview) return
+      const duration = vid.duration || 0
+      if (duration > 0) {
+        // Map current playback time proportionally to highest frame index we received
+        const maxFrame = Math.max(...Object.keys(feedbackByFrameRef.current).map(Number), 0)
+        const targetFrame = Math.min(maxFrame, Math.round((vid.currentTime / duration) * maxFrame))
+        setSyncedFrame(targetFrame)
+        if (showSkeleton && canvasRef.current) {
+          const data = feedbackByFrameRef.current[targetFrame]
+          if (data && data.landmarks) {
+            const canvas = canvasRef.current
+            const ctx = canvas.getContext('2d')
+            const landmarks = data.landmarks
+            const w = canvas.width
+            const h = canvas.height
+            ctx.clearRect(0,0,w,h)
+            ctx.lineWidth = 2
+            ctx.strokeStyle = 'rgba(0,255,200,0.85)'
+            ctx.fillStyle = 'rgba(255,255,255,0.95)'
+            ctx.beginPath()
+            for (const [a,b] of POSE_EDGES) {
+              const pa = landmarks[a]; const pb = landmarks[b]
+              if (!pa || !pb) continue
+              ctx.moveTo(pa[0]*w, pa[1]*h)
+              ctx.lineTo(pb[0]*w, pb[1]*h)
+            }
+            ctx.stroke()
+            for (let i=0;i<landmarks.length;i++) {
+              const [x,y] = landmarks[i]
+              ctx.beginPath()
+              ctx.arc(x*w,y*h,3,0,Math.PI*2)
+              ctx.fill()
+            }
+          }
+        }
+      }
+      rafId = requestAnimationFrame(loop)
+    }
+    rafId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafId)
+  }, [videoPreview, showSkeleton, feedback])
   const avgKneeAngle = feedback.length > 0 
     ? (feedback.reduce((sum, f) => sum + (f.knee_angle || 0), 0) / feedback.length).toFixed(1)
     : 0
 
+  // Simple sparkline canvases for knee angle & rep count
+  const angleCanvasRef = useRef(null)
+  const countCanvasRef = useRef(null)
+
+  useEffect(() => {
+    const drawSpark = (canvas, values, color) => {
+      if (!canvas || values.length < 2) return
+      const ctx = canvas.getContext('2d')
+      const w = canvas.width = canvas.clientWidth
+      const h = canvas.height = canvas.clientHeight
+      ctx.clearRect(0,0,w,h)
+      const min = Math.min(...values)
+      const max = Math.max(...values)
+      const range = max - min || 1
+      ctx.strokeStyle = color
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      values.forEach((v,i) => {
+        const x = (i/(values.length-1))*w
+        const y = h - ((v - min)/range)*h
+        if (i===0) {
+          ctx.moveTo(x,y)
+        } else {
+          ctx.lineTo(x,y)
+        }
+      })
+      ctx.stroke()
+    }
+    const angles = feedback.map(f => f.knee_angle).filter(a => typeof a === 'number')
+    const counts = feedback.map(f => f.count).filter(c => typeof c === 'number')
+    drawSpark(angleCanvasRef.current, angles, '#8a5cff')
+    drawSpark(countCanvasRef.current, counts, '#10b981')
+  }, [feedback])
+
   return (
     <div className="video-upload">
+      <div className={`backend-status ${backendStatus}`}>
+        {backendStatus === 'checking' && `Checking backend (127.0.0.1:${backendPort})…`}
+        {backendStatus === 'up' && `Backend Connected ✅ (127.0.0.1:${backendPort})`}
+        {backendStatus === 'down' && `Backend Unreachable ❌ (127.0.0.1:${backendPort})`}
+      </div>
       <div className="upload-section">
         <div className="file-input-wrapper">
           <input
@@ -209,7 +331,22 @@ function VideoUpload() {
         
         {videoPreview && (
           <div className="video-preview">
-            <video src={videoPreview} controls className="preview-video" />
+            <div className="video-wrapper">
+              <video
+                ref={videoRef}
+                src={videoPreview}
+                controls
+                className="preview-video"
+                onLoadedMetadata={(e)=>{
+                  const vid = e.target
+                  if (canvasRef.current) {
+                    canvasRef.current.width = vid.videoWidth || 640
+                    canvasRef.current.height = vid.videoHeight || 360
+                  }
+                }}
+              />
+              {showSkeleton && <canvas ref={canvasRef} className="overlay-canvas" />}
+            </div>
             <div className="file-info">
               <p>📹 {file.name}</p>
               <p className="file-size">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
@@ -240,6 +377,16 @@ function VideoUpload() {
               className="btn btn-secondary"
             >
               🔄 Reset
+            </button>
+          )}
+
+          {videoPreview && (
+            <button
+              type="button"
+              onClick={() => setShowSkeleton(s => !s)}
+              className="btn btn-tertiary"
+            >
+              {showSkeleton ? '🙈 Hide Skeleton' : '👁️ Show Skeleton'}
             </button>
           )}
 
@@ -292,6 +439,12 @@ function VideoUpload() {
               <div className="metric-value">{avgKneeAngle}°</div>
               <div className="metric-label">Avg Angle</div>
             </div>
+            <div className="metric-card" style={{display:'flex',flexDirection:'column',alignItems:'stretch'}}>
+              <div style={{fontSize:'0.8rem',color:'rgba(255,255,255,0.7)',marginBottom:'0.25rem'}}>Angle Trend</div>
+              <div style={{flex:1, position:'relative'}}>
+                <canvas ref={angleCanvasRef} style={{width:'100%',height:'60px'}} />
+              </div>
+            </div>
             <div className="metric-card">
               <div className="metric-value state-indicator" data-state={latestFeedback.state}>
                 {latestFeedback.state === 'up' ? '⬆️' : '⬇️'} {latestFeedback.state}
@@ -299,12 +452,18 @@ function VideoUpload() {
               <div className="metric-label">Position</div>
             </div>
             <div className="metric-card">
-              <div className="metric-value">{latestFeedback.frame}/{feedback.length}</div>
-              <div className="metric-label">Frame</div>
+              <div className="metric-value">{syncedFrame ?? latestFeedback.frame}/{finalResult?.total_frames || feedback.length}</div>
+              <div className="metric-label">Video Frame (Synced)</div>
             </div>
             <div className="metric-card">
               <div className="metric-value">{processingTime}s</div>
               <div className="metric-label">Duration</div>
+            </div>
+            <div className="metric-card" style={{display:'flex',flexDirection:'column',alignItems:'stretch'}}>
+              <div style={{fontSize:'0.8rem',color:'rgba(255,255,255,0.7)',marginBottom:'0.25rem'}}>Reps Progress</div>
+              <div style={{flex:1, position:'relative'}}>
+                <canvas ref={countCanvasRef} style={{width:'100%',height:'60px'}} />
+              </div>
             </div>
           </div>
         </div>

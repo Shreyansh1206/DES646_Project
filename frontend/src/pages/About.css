@@ -29,8 +29,11 @@
   font-weight: 800;
   margin-bottom: 3rem;
   text-align: center;
-  color: white;
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  color: #222;
+  background: none;
+  text-shadow: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .about-section {
@@ -105,12 +108,12 @@
   border-radius: 12px;
   padding: 1.5rem;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: none;
 }
 
 .tech-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.05);
+  transform: none;
 }
 
 .tech-item h3 {

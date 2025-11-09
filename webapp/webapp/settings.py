@@ -34,4 +34,5 @@ TEMPLATES = [
 WSGI_APPLICATION = 'webapp.webapp.wsgi.application'
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+# Optional project-level static dir; silence warning if absent.
+STATICFILES_DIRS = []

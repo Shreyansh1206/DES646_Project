@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "start": "vite --port 3000 --strictPort",
+    "dev": "vite --port 3000 --strictPort",
     "build": "vite build",
     "preview": "vite preview"
   },

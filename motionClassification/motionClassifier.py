@@ -14,8 +14,13 @@ NUM_KEYPOINTS = 33
 KEYPOINT_DIM = 2
 INPUT_SIZE = NUM_KEYPOINTS * KEYPOINT_DIM
 
-#Label map
-with open('motionClassification/label_map.json', 'r') as f:
+# Get the directory containing this file, then construct absolute paths
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+_LABEL_MAP_PATH = os.path.join(_THIS_DIR, 'label_map.json')
+_MODEL_PATH = os.path.join(_THIS_DIR, 'lstm_classification_model.pth')
+
+# Label map
+with open(_LABEL_MAP_PATH, 'r') as f:
     label_map = json.load(f)
 
 idx_to_class = {v: k for k, v in label_map.items()}
@@ -53,7 +58,7 @@ class LSTMPoseClassifier(nn.Module):
 #Load Model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = LSTMPoseClassifier(INPUT_SIZE, 128, 64, len(label_map)).to(device)
-model.load_state_dict(torch.load("motionClassification/lstm_classification_model.pth", map_location=device))
+model.load_state_dict(torch.load(_MODEL_PATH, map_location=device))
 model.eval()
 
 def predict_motion(sequence):
