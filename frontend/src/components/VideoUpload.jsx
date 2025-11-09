@@ -19,7 +19,15 @@ function VideoUpload() {
   const fileInputRef = useRef(null)
   const startTimeRef = useRef(null)
   const timerRef = useRef(null)
-  const backendBase = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '')
+  // Resolve backend base URL in this order:
+  // 1) URL query ?backend=...
+  // 2) localStorage.backend
+  // 3) Vite env VITE_BACKEND_URL
+  const qp = new URLSearchParams(window.location.search)
+  const qpBackend = qp.get('backend')
+  const lsBackend = typeof window !== 'undefined' ? window.localStorage.getItem('backend') : null
+  const envBackend = import.meta.env.VITE_BACKEND_URL || ''
+  const backendBase = (qpBackend || lsBackend || envBackend || '').replace(/\/$/, '')
   const backendPort = import.meta.env.VITE_BACKEND_PORT || '8000'
   const [showSkeleton, setShowSkeleton] = useState(true)
 
