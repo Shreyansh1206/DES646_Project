@@ -94,6 +94,7 @@ if __name__ == "__main__":
 
     if(motion == 'Pull-Up'):
         pullup_scores = pcs_pullup(sequence)
+        required_angles = calculate_angles(sequence, ['torso', 'elbow', 'torso'])
 
         net_score = (1 - (pullup_scores['loss'] - reference_scores['Pull_Up_scores']['min_net_loss'])/(1.69*reference_scores['Pull_Up_scores']['max_net_loss'] - reference_scores['Pull_Up_scores']['min_net_loss']))*100
 
@@ -160,6 +161,7 @@ if __name__ == "__main__":
 
     if(motion == 'Squat'):
         squat_scores = pcs_squat(sequence)
+        required_angles = calculate_angles(sequence, ['torso', 'knee', 'hip'])
 
         net_score = (1 - (squat_scores['loss'] - reference_scores['Squat_scores']['min_net_loss'])/(1.69*reference_scores['Squat_scores']['max_net_loss'] - reference_scores['Squat_scores']['min_net_loss']))*100
 
@@ -231,6 +233,7 @@ if __name__ == "__main__":
     for feedback in feedback_array:
         print(f"-> {feedback}")
         TTS(feedback)
+
 
 
     
