@@ -1,6 +1,7 @@
 # DES646 Project - Web UI
 
 This repo contains model code and a minimal Django web UI to upload videos and stream simple feedback.
+Frontend: kinetiform.vercel.app
 
 ## Quick start (conda — recommended for macOS)
 
