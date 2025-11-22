@@ -129,16 +129,36 @@ start.sh           # dev convenience to start backend + frontend together
 requirements.txt   # pinned Python deps
 ```
 
-## Deployment (suggested)
+## Deployment
 
-Backend: Railway (or Render/Heroku-compatible)
+**Quick Start**: See `DEPLOYMENT_QUICKSTART.md` for fast deployment instructions.
+
+We provide two deployment strategies:
+
+### Option A: Full Stack on Vercel (Experimental)
+Deploy both frontend and backend to Vercel using serverless functions.
+- 📝 Full guide: `VERCEL_DEPLOYMENT.md`
+- ⚠️ **Limitations**: 50MB package size, 4.5MB request body, 60s timeout
+- Best for: Small demos, testing
+
+### Option B: Split Deployment (Recommended for Production)
+Deploy frontend to Vercel, backend to Railway/Render.
+- 📝 Full guide: `SPLIT_DEPLOYMENT.md`
+- ✅ **No limits**: Better for video processing and ML models
+- Best for: Production apps, larger files, longer processing
+
+### Quick Split Deployment
+
+**Backend** (Railway recommended):
 - Ensure `Procfile` contains: `web: gunicorn webapp.webapp.wsgi:application --bind 0.0.0.0:$PORT`
 - Configure env vars: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=0`, `DJANGO_ALLOWED_HOSTS`, and CORS settings
+- Deploy: `railway init && railway up`
 
-Frontend: Vercel
+**Frontend** (Vercel):
 - Project root: `frontend/`
 - Build: `npm run build` ; Output: `dist`
-- Env: `VITE_BACKEND_URL=https://<railway-app>`
+- Env: `VITE_BACKEND_URL=https://<your-railway-app>.railway.app`
+- Deploy: `vercel --prod`
 
 ### CORS
 

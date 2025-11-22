@@ -9,6 +9,9 @@ const isProd = process.env.NODE_ENV === 'production'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: 'dist',
+  },
   server: !isProd ? {
     port: 3000,
     strictPort: true,
@@ -19,5 +22,6 @@ export default defineConfig({
       }
     }
   } : undefined,
-  // In production we expect VITE_BACKEND_URL to be set and fetch used directly.
+  // In production (Vercel), API calls go to /inference which routes to /api/index.py
+  // The VITE_BACKEND_URL env var is not needed on Vercel
 })

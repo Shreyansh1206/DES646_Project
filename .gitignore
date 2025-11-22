@@ -33,3 +33,4 @@ tts_output/
 .DS_Store
 dist/
 .vite/
+.vercel
