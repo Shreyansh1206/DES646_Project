@@ -20,7 +20,13 @@ def health(request):
         "service": "inference",
         "timestamp": time.time(),
         "debug": bool(os.environ.get("DJANGO_DEBUG")),
-        "variant": "top-level"
+        "variant": "top-level",
+        "models_present": all(os.path.exists(p) for p in [
+            os.path.join(os.path.dirname(__file__), '..', '..', 'Model', 'autoEncoder', 'Deadlift', 'trainedModel.pth'),
+            os.path.join(os.path.dirname(__file__), '..', '..', 'Model', 'autoEncoder', 'Squat', 'trainedModel.pth'),
+            os.path.join(os.path.dirname(__file__), '..', '..', 'Model', 'autoEncoder', 'Pull_Up', 'trainedModel.pth'),
+            os.path.join(os.path.dirname(__file__), '..', '..', 'Model', 'motionClassification', 'lstm_classification_model.pth'),
+        ])
     })
 
 
