@@ -8,6 +8,10 @@ from .services import stream_feedback_for_video
 
 @csrf_exempt
 def upload_video(request):
+    # Health check for frontend: allow HEAD/GET to confirm server is up
+    if request.method in ('HEAD', 'GET'):
+        from django.http import HttpResponse
+        return HttpResponse(status=200)
     if request.method != 'POST':
         return HttpResponseBadRequest('POST required')
 

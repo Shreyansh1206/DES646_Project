@@ -1,8 +1,14 @@
-from angleCalculator import calculate_angles
+import sys
+import os
+
+# Add parent directory to path when run as script
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from Model.angleCalculator import calculate_angles
 
 import numpy as np
 import json
-import os
 
 def update_json(file_path: str, new_data: dict):
     data = {}

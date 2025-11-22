@@ -1,0 +1,60 @@
+# Development files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.sqlite3
+db.sqlite3
+
+# Temporary files
+tts_output/
+Model/Input_Video/
+
+# Frontend development
+frontend/node_modules/
+frontend/.vite/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+
+# Backend - exclude entire backend for frontend-only deployment
+webapp/
+Model/
+api/
+*.pth
+*.pt
+requirements.txt
+Procfile
+runtime.txt
+railway.json
+render.yaml
+setup.sh
+start.sh
