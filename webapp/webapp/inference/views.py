@@ -1,9 +1,27 @@
 import os
 import tempfile
-from django.http import StreamingHttpResponse, HttpResponseBadRequest
+import time
+from django.http import StreamingHttpResponse, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
 
 from .services import stream_feedback_for_video
+
+
+def health(request):
+    """Simple health/status endpoint.
+
+    Returns a JSON payload indicating the service is running. Designed for
+    external load balancers or frontend probes. Lightweight: no DB queries.
+    """
+    if request.method not in ("GET", "HEAD"):
+        return HttpResponseNotAllowed(["GET", "HEAD"])
+    payload = {
+        "status": "ok",
+        "service": "inference",
+        "timestamp": time.time(),
+        "debug": bool(os.environ.get("DJANGO_DEBUG")),
+    }
+    return JsonResponse(payload)
 
 
 @csrf_exempt

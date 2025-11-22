@@ -99,6 +99,7 @@ npm run preview  # serve the built app locally
 Main project lives under `webapp/` and exposes inference endpoints under `/inference/*` (see `webapp/webapp/inference/`). A minimal SQLite DB (`webapp/db.sqlite3`) is used for Django admin/auth defaults.
 
 Endpoints (examples):
+- GET `/inference/health/` — health/status JSON (used by probes)
 - POST `/inference/upload/` — upload an mp4 and stream feedback (Server-Sent Events)
 
 ## Models and data
