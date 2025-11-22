@@ -23,11 +23,13 @@ function VideoUpload() {
   // 1) URL query ?backend=...
   // 2) localStorage.backend
   // 3) Vite env VITE_BACKEND_URL
+  // 4) Fallback to Railway deployed backend
   const qp = new URLSearchParams(window.location.search)
   const qpBackend = qp.get('backend')
   const lsBackend = typeof window !== 'undefined' ? window.localStorage.getItem('backend') : null
-  const envBackend = import.meta.env.VITE_BACKEND_URL || ''
-  const backendBase = (qpBackend || lsBackend || envBackend || '').replace(/\/$/, '')
+  const railwayFallback = 'https://kinetiform-production.up.railway.app'
+  const envBackend = import.meta.env.VITE_BACKEND_URL || railwayFallback
+  const backendBase = (qpBackend || lsBackend || envBackend || railwayFallback).replace(/\/$/, '')
   const backendPort = import.meta.env.VITE_BACKEND_PORT || '8000'
   const [showSkeleton, setShowSkeleton] = useState(true)
 
