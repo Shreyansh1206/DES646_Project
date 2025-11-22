@@ -167,6 +167,33 @@ Deploy frontend to Vercel, backend to Railway/Render.
 - Env: `VITE_BACKEND_URL=https://<your-railway-app>.railway.app`
 - Deploy: `vercel --prod`
 
+### Automation Scripts
+
+The `scripts/` directory provides repeatable deployment helpers:
+
+- `scripts/deploy_frontend.sh` — installs dependencies, builds, and deploys to Vercel.
+- `scripts/deploy_backend.sh` — triggers a Railway deployment (expects env vars configured in Railway dashboard).
+- `scripts/verify_stack.sh` — verifies frontend root (200) and backend `/healthz` & `/inference/health/` endpoints.
+
+Example usage:
+```bash
+./scripts/deploy_backend.sh
+./scripts/deploy_frontend.sh
+FRONTEND_URL=https://your-frontend.vercel.app \
+BACKEND_URL=https://your-backend.up.railway.app \
+./scripts/verify_stack.sh
+```
+
+If Vercel returns 401 after deployment, disable access protection (Project Settings → Access Control) or create a fresh public project.
+
+### CI Workflow
+
+GitHub Actions workflow `.github/workflows/deploy.yml` will (if secrets exist) deploy on pushes to `main`:
+- Backend via Railway (`RAILWAY_TOKEN` secret)
+- Frontend via Vercel (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` secrets)
+
+Add these secrets under Repository Settings → Secrets → Actions.
+
 ### CORS
 
 In development, the Vite dev server proxies to `127.0.0.1:8000`. In production, set `CORS_ALLOWED_ORIGINS` on the backend to your frontend domain and set `DJANGO_DEBUG=0`.
