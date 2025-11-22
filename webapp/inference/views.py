@@ -1,9 +1,27 @@
 import os
 import tempfile
-from django.http import StreamingHttpResponse, HttpResponseBadRequest
+import time
+from django.http import StreamingHttpResponse, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
 
 from .services import stream_feedback_for_video
+
+
+def health(request):
+    """Duplicate health endpoint for environments resolving this app path.
+
+    Some deployments may import the top-level `webapp.inference` instead of
+    the nested `webapp.webapp.inference`. Provide the same JSON payload.
+    """
+    if request.method not in ("GET", "HEAD"):
+        return HttpResponseNotAllowed(["GET", "HEAD"])
+    return JsonResponse({
+        "status": "ok",
+        "service": "inference",
+        "timestamp": time.time(),
+        "debug": bool(os.environ.get("DJANGO_DEBUG")),
+        "variant": "top-level"
+    })
 
 
 @csrf_exempt
