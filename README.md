@@ -68,10 +68,16 @@ export GROQ_API_KEY="your-groq-key"              # for AI/NLP feedback (optional
 export DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1"
 ```
 
-Frontend (production builds on Vercel or static hosting) should point at your backend:
+Frontend (production builds on Vercel or static hosting) should point at your backend. If you are using the Railway deployment created in this repo the fallback URL baked into the React component is:
+
+```
+https://kinetiform-production.up.railway.app
+```
+
+You can still override via env var:
 
 ```bash
-export VITE_BACKEND_URL="https://your-backend-host"
+export VITE_BACKEND_URL="https://kinetiform-production.up.railway.app"  # or your own Railway app URL
 ```
 
 Note: The `start.sh` file currently exports a placeholder `GROQ_API_KEY` for local dev. Override it by setting your own key in the shell before running, or remove that line if not needed.
